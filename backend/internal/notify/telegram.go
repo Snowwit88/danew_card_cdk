@@ -168,6 +168,23 @@ func FormatRedeemed(product, plan, who, amount string) string {
 	)
 }
 
+// FormatMinor 把上游最小货币单位换成可读金额。USD 的 1199 是 11.99 美元，不是 1199 美元。
+func FormatMinor(minor int64, currency string) string {
+	cur := strings.ToUpper(strings.TrimSpace(currency))
+	if cur == "" {
+		cur = "USD"
+	}
+	neg := minor < 0
+	if neg {
+		minor = -minor
+	}
+	text := fmt.Sprintf("%d.%02d %s", minor/100, minor%100, cur)
+	if neg {
+		return "-" + text
+	}
+	return text
+}
+
 // ChatGPTRedeemed 通知 ChatGPT 已经开通。地区用「菲区」「美区」这种说法。
 func ChatGPTRedeemed(plan, email, code, region string) {
 	SendText(formatChatGPTRedeemed(plan, email, code, region))

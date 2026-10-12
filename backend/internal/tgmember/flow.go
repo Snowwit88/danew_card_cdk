@@ -772,7 +772,7 @@ func redeemedText(code *db.TGCode, red *db.TGRedemption) string {
 	}
 	amount := ""
 	if red.AmountMinor > 0 {
-		amount = fmt.Sprintf("%d %s", red.AmountMinor, strings.ToUpper(red.Currency))
+		amount = notify.FormatMinor(red.AmountMinor, red.Currency)
 	}
 	return notify.FormatRedeemed("Telegram", PlanLabel(code.Plan), who, amount)
 }

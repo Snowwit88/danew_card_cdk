@@ -70,7 +70,7 @@ func TestMembershipDurableSuccess(t *testing.T) {
 	if err := db.DB.QueryRow(`SELECT business_key, text FROM telegram_notifications`).Scan(&key, &text); err != nil {
 		t.Fatal(err)
 	}
-	if key != fmt.Sprintf("x:redemption:%d", r.ID) || !strings.Contains(text, "@recipient") || !strings.Contains(text, "1500 USD") {
+	if key != fmt.Sprintf("x:redemption:%d", r.ID) || !strings.Contains(text, "@recipient") || !strings.Contains(text, "15.00 USD") {
 		t.Fatalf("key=%s text=%s", key, text)
 	}
 	if err := saveState(&c, &r); err != nil {

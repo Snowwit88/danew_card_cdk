@@ -1139,7 +1139,7 @@ func redeemedText(code *db.XCode, red *db.XRedemption) string {
 	}
 	amount := ""
 	if red.AmountMinor > 0 {
-		amount = fmt.Sprintf("%d %s", red.AmountMinor, strings.ToUpper(red.Currency))
+		amount = notify.FormatMinor(red.AmountMinor, red.Currency)
 	}
 	return notify.FormatRedeemed("X 会员", planLabel(code.Plan), who, amount)
 }
