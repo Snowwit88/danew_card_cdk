@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -9,9 +10,20 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/danew/cdk-recharge-system/internal/avanfinity"
 	"github.com/danew/cdk-recharge-system/internal/db"
 	"github.com/danew/cdk-recharge-system/internal/tgmember"
 )
+
+func customerAPIError(err error) string {
+	var api *avanfinity.APIError
+	if errors.As(err, &api) {
+		if msg := strings.TrimSpace(api.Message); msg != "" && !strings.HasPrefix(msg, "{") && !strings.HasPrefix(msg, "[") {
+			return msg
+		}
+	}
+	return err.Error()
+}
 
 var (
 	tgPubMu   sync.Mutex
@@ -72,7 +84,7 @@ func PublicTGQuote(c *gin.Context) {
 	}
 	st, err := tgmember.Quote(c.Request.Context(), req.Code, req.Recipient)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "reusable": true})
+		c.JSON(http.StatusBadRequest, gin.H{"error": customerAPIError(err), "reusable": true})
 		return
 	}
 	c.JSON(http.StatusOK, st)

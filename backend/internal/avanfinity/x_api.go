@@ -16,6 +16,7 @@ type PublicCDK struct {
 	AmountMinor       int64    `json:"amountMinor"`
 	Currency          string   `json:"currency"`
 	Message           string   `json:"message"`
+	Error             string   `json:"error"`
 	ErrorCode         string   `json:"errorCode"`
 	InvoiceURLs       []string `json:"invoiceUrls"`
 	CanRetryPreflight *bool    `json:"canRetryPreflight"`

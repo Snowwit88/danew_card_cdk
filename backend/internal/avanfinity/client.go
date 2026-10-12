@@ -147,11 +147,18 @@ func (c *Client) do(ctx context.Context, method, path, idem string, body any, ou
 		apiErr := &APIError{Status: resp.StatusCode, Message: strings.TrimSpace(string(raw))}
 		var env struct {
 			Error     string `json:"error"`
+			Message   string `json:"message"`
 			ErrorCode string `json:"errorCode"`
 		}
-		if json.Unmarshal(raw, &env) == nil && env.Error != "" {
-			apiErr.Message = env.Error
-			apiErr.ErrorCode = env.ErrorCode
+		if json.Unmarshal(raw, &env) == nil {
+			text := strings.TrimSpace(env.Message)
+			if text == "" {
+				text = strings.TrimSpace(env.Error)
+			}
+			if text != "" {
+				apiErr.Message = text
+				apiErr.ErrorCode = env.ErrorCode
+			}
 		}
 		return apiErr
 	}

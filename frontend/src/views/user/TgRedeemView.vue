@@ -32,7 +32,7 @@
         <template v-else-if="phase === 'user' || phase === 'ineligible'">
           <h2 class="text-xl font-bold text-ink">{{ t('tgRedeem.handleLabel') }}</h2>
           <div v-if="phase === 'ineligible'" class="rounded-lg p-3 text-sm" style="background: var(--warn-soft, #fff7ed)">
-            {{ t('tgRedeem.ineligible') }}
+            {{ state?.detail || t('tgRedeem.ineligible') }}
           </div>
           <div class="rounded-xl bg-soft p-4 text-sm space-y-1">
             <div class="text-muted">{{ t('tgRedeem.valid') }}</div>
@@ -110,7 +110,7 @@
               :style="p.active ? { borderColor: 'var(--primary)', background: 'var(--primary-soft)' } : { borderColor: 'var(--brd)' }"
             >{{ p.label }}</div>
           </div>
-          <p class="text-sm">{{ t('tgRedeem.lockedBody') }}</p>
+          <p class="text-sm">{{ state?.detail || t('tgRedeem.lockedBody') }}</p>
           <p class="mono text-sm">{{ code }}</p>
           <button class="btn-secondary" @click="copyCode">{{ t('tgRedeem.copyCode') }}</button>
         </template>
@@ -230,10 +230,30 @@ function backToAccount() {
   phase.value = 'user'
 }
 
+function responseText(data: any) {
+  return String(data?.message || data?.error || data?.detail || '').trim()
+}
+
+function quoteProblem(data: any) {
+  const status = String(data?.status || '').toLowerCase()
+  const resolution = String(data?.resolution || '').toLowerCase()
+  const step = String(data?.step || '')
+  const text = responseText(data)
+  const hard = ['paused', 'ineligible', 'failed', 'failed_precharge', 'cancelled', 'revoked'].includes(status) || resolution === 'paused'
+  if (hard) return text || t('tgRedeem.requestFailed')
+  if (String(data?.error || '').trim() && !['confirm', 'progress', 'done', 'queued'].includes(step)) {
+    return String(data.error).trim()
+  }
+  if (text && ['code', 'user', 'ineligible', ''].includes(step) && (data?.message || data?.error || data?.detail)) {
+    return text
+  }
+  return ''
+}
+
 async function post(path: string, body: Record<string, string>) {
   const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
   const data = await r.json().catch(() => ({}))
-  if (!r.ok) throw new Error(data.error || t('tgRedeem.requestFailed'))
+  if (!r.ok) throw new Error(responseText(data) || t('tgRedeem.requestFailed'))
   return data as State
 }
 
@@ -264,7 +284,13 @@ async function quote() {
   busy.value = true
   error.value = ''
   try {
-    apply(await post('/api/v1/public/tg/quote', { code: code.value.trim(), recipient: handle.value }))
+    const data = await post('/api/v1/public/tg/quote', { code: code.value.trim(), recipient: handle.value })
+    const problem = quoteProblem(data)
+    if (problem) {
+      error.value = problem
+      return
+    }
+    apply(data)
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : t('tgRedeem.requestFailed')
   } finally {

@@ -455,7 +455,9 @@ func stateOf(code db.TGCode, red db.TGRedemption, has bool) PublicState {
 	if code.Status == "unused" && has && red.FinishedAt != "" && red.UpstreamStatus == "ineligible" {
 		step, reusable = "ineligible", true
 		headline = "这个账号现在不能接收 Telegram Premium"
-		detail = "常见原因：已经是 Premium、用户名刚改过，或账号受限。卡密没有被消耗，换一个用户名再试。"
+		if strings.TrimSpace(detail) == "" {
+			detail = "常见原因：已经是 Premium、用户名刚改过，或账号受限。卡密没有被消耗，换一个用户名再试。"
+		}
 	}
 	st := PublicState{
 		Code: code.Code, Plan: code.Plan, PlanLabel: PlanLabel(code.Plan), Status: code.Status,
@@ -564,6 +566,9 @@ func runQuote(ctx context.Context, code *db.TGCode, red *db.TGRedemption) error 
 	if err != nil {
 		return hold(ctx, "quote", code, red, err)
 	}
+	if err := rejectUnquotable(code, red, pub); err != nil {
+		return err
+	}
 	if err := applyPublic(code, red, pub, false); err != nil {
 		_ = saveState(code, red)
 		return err
@@ -653,6 +658,36 @@ func pay(ctx context.Context, client *avanfinity.Client, code *db.TGCode, red *d
 		return err
 	}
 	return saveState(code, red)
+}
+
+// rejectUnquotable 把 paused 这类报价失败还给客户，并把没动过钱的卡密放回可用。
+func rejectUnquotable(code *db.TGCode, red *db.TGRedemption, pub *avanfinity.PublicCDK) error {
+	if pub == nil || red.PaymentAttempted || red.FundingDispatched {
+		return nil
+	}
+	text := strings.TrimSpace(pub.Message)
+	if text == "" {
+		text = strings.TrimSpace(pub.Error)
+	}
+	msg, refuse := xlogic.RefuseQuote(pub.Status, text)
+	if !refuse {
+		return nil
+	}
+	if msg == "" {
+		msg = "暂时不能为这个账号开通，请稍后再试或联系客服"
+	}
+	code.Status = "unused"
+	red.FinishedAt = now()
+	red.UpstreamStatus = strings.ToLower(strings.TrimSpace(pub.Status))
+	red.Message = msg
+	if pub.ErrorCode != "" {
+		red.ErrorCode = pub.ErrorCode
+	}
+	red.NextPollAt = ""
+	if err := saveState(code, red); err != nil {
+		return err
+	}
+	return fmt.Errorf("%s", msg)
 }
 
 func applyPublic(code *db.TGCode, red *db.TGRedemption, pub *avanfinity.PublicCDK, fromRedeem bool) error {

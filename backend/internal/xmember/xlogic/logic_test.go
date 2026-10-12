@@ -5,6 +5,19 @@ import (
 	"time"
 )
 
+func TestRefuseQuoteKeepsTheCustomerMessage(t *testing.T) {
+	msg, refuse := RefuseQuote("paused", "运费服务暂时为了会员关闭，请联系运营者")
+	if !refuse || msg != "运费服务暂时为了会员关闭，请联系运营者" {
+		t.Fatalf("paused quote hidden: %q %v", msg, refuse)
+	}
+	if _, refuse := RefuseQuote("prepared", "可以确认"); refuse {
+		t.Fatal("prepared quote should continue")
+	}
+	if _, refuse := RefuseQuote("unused", ""); refuse {
+		t.Fatal("empty unused quote is not a refusal")
+	}
+}
+
 func TestPollNeverConfirmsAQuote(t *testing.T) {
 	// 旧 bug：CDK 报价成功后带有 message，轮询把它当成可以付款。
 	cases := []struct {

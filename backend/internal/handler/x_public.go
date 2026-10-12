@@ -73,7 +73,7 @@ func PublicXQuote(c *gin.Context) {
 	}
 	st, err := xmember.Quote(c.Request.Context(), req.Code, req.Recipient)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "reusable": true})
+		c.JSON(http.StatusBadRequest, gin.H{"error": customerAPIError(err), "reusable": true})
 		return
 	}
 	c.JSON(http.StatusOK, st)

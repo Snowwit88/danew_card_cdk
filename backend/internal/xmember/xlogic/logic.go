@@ -81,6 +81,22 @@ func RecipientAction(current, next string, moneyMoved bool) string {
 	return ActReplace
 }
 
+// RefuseQuote 报价还没进入可确认的状态。paused、ineligible 这类结果要原样告诉客户，
+// 不能当成已受理，否则页面会停在「下一步」且不显示原因。
+func RefuseQuote(status, message string) (string, bool) {
+	status = strings.ToLower(strings.TrimSpace(status))
+	message = strings.TrimSpace(message)
+	switch status {
+	case "prepared", "preparing", "quoted", "funding", "funded", "paying", "processing", "paid_pending_delivery", "completed", "review_required", "requires_action":
+		return "", false
+	case "", "unused":
+		if message == "" {
+			return "", false
+		}
+	}
+	return message, true
+}
+
 func QuoteStale(errorCode string) bool {
 	switch strings.ToUpper(strings.TrimSpace(errorCode)) {
 	case "QUOTE_EXPIRED", "QUOTE_CHANGED":
